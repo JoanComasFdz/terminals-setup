@@ -36,14 +36,17 @@ Describe "setup-powershell-terminal.ps1" {
 
     It "loads the profile without errors and sets the Oh My Posh prompt" {
         $shell = (Get-Process -Id $PID).Path
-        $output = & $shell -NoLogo -Command @'
+        $script = @'
 $ErrorActionPreference = "Stop"
 . $PROFILE
 if (-not (Get-Module Terminal-Icons)) { throw "Terminal-Icons not loaded" }
 if (-not (Get-Module posh-git)) { throw "posh-git not loaded" }
 if (-not (Get-Module oh-my-posh-core)) { throw "Oh My Posh prompt not initialized" }
 "OK"
-'@ 2>&1
+'@
+        # -EncodedCommand avoids Windows PowerShell 5.1 stripping the quotes in a -Command argument
+        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
+        $output = & $shell -NoLogo -EncodedCommand $encoded 2>&1
         $LASTEXITCODE | Should -Be 0 -Because ($output | Out-String)
         $output | Select-Object -Last 1 | Should -Be "OK"
     }
