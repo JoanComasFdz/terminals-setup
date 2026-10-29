@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck
+        run: shellcheck setup-linux-terminal.sh tests/test-linux-setup.sh
+      - name: PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+          # Write-Host is intentional: these are interactive scripts with colored console output
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -ExcludeRule PSAvoidUsingWriteHost
+          $results | Format-Table -AutoSize -Wrap
+          if ($results) { exit 1 }
+
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22.04 has no eza package, so it covers the GitHub release fallback (x86_64 and arm64)
+        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-22.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run setup script
+        run: bash setup-linux-terminal.sh
+      - name: Check result
+        run: bash tests/test-linux-setup.sh
+
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        shell: [pwsh, powershell]
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run setup script
+        run: .\setup-powershell-terminal.ps1
+      - name: Install Pester 5
+        run: Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser -Force -SkipPublisherCheck
+      - name: Check result
+        run: |
+          Import-Module Pester -MinimumVersion 5.0
+          $config = New-PesterConfiguration
+          $config.Run.Path = "tests/PowerShellSetup.Tests.ps1"
+          $config.Run.Exit = $true
+          $config.Output.Verbosity = "Detailed"
+          Invoke-Pester -Configuration $config

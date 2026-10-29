@@ -47,14 +47,25 @@ safe_curl_exec() {
         return 1
     fi
 
+    # "|| result=$?" keeps set -e from exiting before the temp file is removed
+    local result=0
     if [ -n "$extra_args" ]; then
-        "$shell" "$tmpfile" "$extra_args"
+        "$shell" "$tmpfile" "$extra_args" || result=$?
     else
-        "$shell" "$tmpfile"
+        "$shell" "$tmpfile" || result=$?
     fi
-    local result=$?
     rm -f "$tmpfile"
     return $result
+}
+
+# Prints the latest release tag of a GitHub repo (e.g. "v0.40.3"), or nothing on failure.
+# Follows the releases/latest redirect instead of calling the API, which is rate limited.
+latest_github_tag() {
+    local url
+    url=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" || true)
+    case "$url" in
+        */releases/tag/*) echo "${url##*/}" ;;
+    esac
 }
 
 # -----------------------------------------------------------------------------
@@ -138,12 +149,16 @@ else
     else
         # Fallback: install from GitHub releases
         print_warning "eza not in apt repos, installing from GitHub releases..."
-        EZA_VERSION=$(curl -sfL https://api.github.com/repos/eza-community/eza/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-        if [ -z "$EZA_VERSION" ]; then
-            print_error "Failed to fetch eza version from GitHub API"
-            exit 1
-        fi
-        if ! wget -qO /tmp/eza.tar.gz "https://github.com/eza-community/eza/releases/download/${EZA_VERSION}/eza_x86_64-unknown-linux-gnu.tar.gz"; then
+        case "$(uname -m)" in
+            x86_64)        EZA_TARGET="x86_64-unknown-linux-gnu" ;;
+            aarch64|arm64) EZA_TARGET="aarch64-unknown-linux-gnu" ;;
+            armv7l)        EZA_TARGET="arm-unknown-linux-gnueabihf" ;;
+            *)
+                print_error "No prebuilt eza binary for architecture: $(uname -m)"
+                exit 1
+                ;;
+        esac
+        if ! wget -qO /tmp/eza.tar.gz "https://github.com/eza-community/eza/releases/latest/download/eza_${EZA_TARGET}.tar.gz"; then
             print_error "Failed to download eza binary"
             exit 1
         fi
@@ -164,9 +179,9 @@ print_step "[7/7] Installing nvm..."
 if [ -d "$HOME/.nvm" ]; then
     print_warning "nvm already installed, skipping..."
 else
-    NVM_VERSION=$(curl -sfL https://api.github.com/repos/nvm-sh/nvm/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+    NVM_VERSION=$(latest_github_tag nvm-sh/nvm)
     if [ -z "$NVM_VERSION" ]; then
-        print_error "Failed to fetch nvm version from GitHub API"
+        print_error "Failed to fetch latest nvm version from GitHub"
         exit 1
     fi
     print_step "Installing nvm $NVM_VERSION..."
@@ -239,14 +254,19 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
-# zoxide (smarter cd)
-eval "$(zoxide init zsh)"
+# zoxide (smarter cd) is initialized by the zoxide plugin above
 
 # eza alias (modern ls)
 alias l='eza --long --all --header --icons --group-directories-first --no-permissions --no-user'
 
-# Editor
-export EDITOR="code --wait"
+# Editor: VS Code when available, otherwise a terminal editor
+if (( $+commands[code] )); then
+  export EDITOR="code --wait"
+elif (( $+commands[nano] )); then
+  export EDITOR="nano"
+else
+  export EDITOR="vi"
+fi
 
 # Snap packages path (for WSL2/Ubuntu)
 export PATH="/snap/bin:$PATH"
@@ -260,8 +280,9 @@ EOF
 # Set zsh as default shell
 # -----------------------------------------------------------------------------
 print_step "Setting zsh as default shell..."
-if [ "$SHELL" != "$(which zsh)" ]; then
-    chsh -s "$(which zsh)"
+if [ "${SHELL:-}" != "$(which zsh)" ]; then
+    # sudo reuses the credentials cached by apt above, so chsh doesn't prompt again
+    sudo chsh -s "$(which zsh)" "$(id -un)"
     echo -e "${GREEN}Default shell changed to zsh${NC}"
 else
     print_warning "zsh is already the default shell"
@@ -286,8 +307,8 @@ echo ""
 echo -e "${GREEN}Restart your terminal or run 'zsh' to start using the new setup!${NC}"
 echo ""
 # Fetch latest Nerd Fonts version for instructions
-NERD_FONTS_VERSION=$(curl -sfL https://api.github.com/repos/ryanoasis/nerd-fonts/releases/latest | grep '"tag_name"' | cut -d'"' -f4 || true)
-NERD_FONTS_VERSION="${NERD_FONTS_VERSION:-v3.4.0}"  # Fallback if API fails
+NERD_FONTS_VERSION=$(latest_github_tag ryanoasis/nerd-fonts)
+NERD_FONTS_VERSION="${NERD_FONTS_VERSION:-v3.5.1}"  # Fallback if the lookup fails
 
 echo -e "${YELLOW}══════════════════════════════════════════════════════════════════════════════${NC}"
 echo -e "${YELLOW}  NEXT STEPS${NC}"

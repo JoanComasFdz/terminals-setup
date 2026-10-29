@@ -1,8 +1,10 @@
 # ======================================================
 # PowerShell Terminal Setup Script
-# Installs all dependencies for the PowerShell profile
-# Run as Administrator for font installation
+# Installs all dependencies and writes the PowerShell profile
+# No Administrator rights needed: everything installs per user
 # ======================================================
+
+$ErrorActionPreference = "Stop"
 
 Write-Host "Setting up PowerShell Terminal..." -ForegroundColor Cyan
 Write-Host ""
@@ -14,22 +16,29 @@ winget install JanDeDobbeleer.OhMyPosh -s winget --accept-package-agreements --a
 # Refresh PATH so oh-my-posh command is available
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
+# winget exits non-zero when oh-my-posh is already installed, so check for the command instead
+if (-not (Get-Command oh-my-posh -ErrorAction SilentlyContinue)) {
+    Write-Host "  oh-my-posh is not available after installing. Check the winget output above." -ForegroundColor Red
+    exit 1
+}
+
 # 2. Install a Nerd Font (required for icons to display correctly)
 Write-Host ""
 Write-Host "[2/6] Installing FiraCode Nerd Font..." -ForegroundColor Yellow
 Write-Host "  (This font is required for icons to display properly)" -ForegroundColor Gray
 
-try {
-    oh-my-posh font install FiraCode --user
+# oh-my-posh is a native command, so a failure sets $LASTEXITCODE instead of throwing
+oh-my-posh font install FiraCode --user
+if ($LASTEXITCODE -eq 0) {
     Write-Host "  Font installed successfully!" -ForegroundColor Gray
     Write-Host ""
     Write-Host "  IMPORTANT: You must manually set your terminal font to:" -ForegroundColor Magenta
     Write-Host "  'FiraCode Nerd Font' or 'FiraCode NF'" -ForegroundColor Magenta
     Write-Host ""
     Write-Host "  In Windows Terminal: Settings > Profiles > Defaults > Appearance > Font face" -ForegroundColor Gray
-} catch {
-    Write-Host "  Font installation failed. You may need to run as Administrator." -ForegroundColor Red
-    Write-Host "  Or manually install a Nerd Font from: https://www.nerdfonts.com/" -ForegroundColor Red
+} else {
+    Write-Host "  Font installation failed (exit code $LASTEXITCODE)." -ForegroundColor Red
+    Write-Host "  Install FiraCode Nerd Font manually from: https://www.nerdfonts.com/font-downloads" -ForegroundColor Red
 }
 
 # 3. Install Terminal-Icons module (file/folder icons)
@@ -74,14 +83,41 @@ foreach ($theme in $themes) {
     }
 }
 
-# 6. Set POSH_THEMES_PATH environment variable
+# 6. Write the PowerShell profile
 Write-Host ""
-Write-Host "[6/6] Setting POSH_THEMES_PATH environment variable..." -ForegroundColor Yellow
+Write-Host "[6/6] Writing PowerShell profile..." -ForegroundColor Yellow
 
-[Environment]::SetEnvironmentVariable("POSH_THEMES_PATH", $themesPath, "User")
-$env:POSH_THEMES_PATH = $themesPath
+# $PROFILE belongs to the shell running this script (Windows PowerShell 5.1 and PowerShell 7
+# have separate profiles and module folders), so run the script from the shell you use.
+$profileDir = Split-Path -Parent $PROFILE
+if (-not (Test-Path $profileDir)) {
+    New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
+}
 
-Write-Host "  POSH_THEMES_PATH = $themesPath" -ForegroundColor Gray
+if (Test-Path $PROFILE) {
+    $backup = "$PROFILE.backup.$(Get-Date -Format 'yyyyMMddHHmmss')"
+    Copy-Item $PROFILE $backup
+    Write-Host "  Backed up existing profile to: $backup" -ForegroundColor Gray
+}
+
+$profileContent = @'
+# Oh My Posh prompt (spaceship theme, downloaded locally by setup-powershell-terminal.ps1)
+if (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
+    $ompShell = if ($PSVersionTable.PSEdition -eq "Core") { "pwsh" } else { "powershell" }
+    $ompTheme = "$env:LOCALAPPDATA\Programs\oh-my-posh\themes\spaceship.omp.json"
+    if (-not (Test-Path $ompTheme)) { $ompTheme = "spaceship" }
+    oh-my-posh init $ompShell --config $ompTheme | Invoke-Expression
+}
+
+# File and folder icons in directory listings
+Import-Module Terminal-Icons -ErrorAction SilentlyContinue
+
+# Git tab completion (imported after Oh My Posh so it keeps the Oh My Posh prompt)
+Import-Module posh-git -ErrorAction SilentlyContinue
+'@
+
+Set-Content -Path $PROFILE -Value $profileContent -Encoding UTF8
+Write-Host "  Profile written to: $PROFILE" -ForegroundColor Gray
 
 # Done
 Write-Host ""
@@ -90,6 +126,7 @@ Write-Host "Setup complete!" -ForegroundColor Green
 Write-Host "======================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "Installed themes: $($themes -join ', ')" -ForegroundColor Gray
+Write-Host "Restart your terminal (or run '. `$PROFILE') to load the new prompt." -ForegroundColor Gray
 Write-Host ""
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host "CONFIGURE FONT IN WINDOWS TERMINAL" -ForegroundColor Cyan
