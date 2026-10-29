@@ -7,7 +7,7 @@ One-click setup scripts for beautiful, productive terminal environments.
 | Script | Platform | What it installs |
 |--------|----------|------------------|
 | `setup-linux-terminal.sh` | Linux / WSL2 | Zsh, Oh My Zsh, Spaceship theme, zsh-autosuggestions, zsh-syntax-highlighting, zoxide, eza, nvm |
-| `setup-powershell-terminal.ps1` | Windows | Oh My Posh, Terminal-Icons, posh-git, CaskaydiaCove Nerd Font |
+| `setup-powershell-terminal.ps1` | Windows | Oh My Posh, Terminal-Icons, posh-git, FiraCode Nerd Font |
 
 ## Usage
 
