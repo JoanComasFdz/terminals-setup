@@ -10,7 +10,7 @@ Write-Host "Setting up PowerShell Terminal..." -ForegroundColor Cyan
 Write-Host ""
 
 # 1. Install oh-my-posh (prompt theme engine)
-Write-Host "[1/6] Installing oh-my-posh..." -ForegroundColor Yellow
+Write-Host "[1/7] Installing oh-my-posh..." -ForegroundColor Yellow
 winget install JanDeDobbeleer.OhMyPosh -s winget --accept-package-agreements --accept-source-agreements
 
 # Refresh PATH so oh-my-posh command is available
@@ -24,7 +24,7 @@ if (-not (Get-Command oh-my-posh -ErrorAction SilentlyContinue)) {
 
 # 2. Install a Nerd Font (required for icons to display correctly)
 Write-Host ""
-Write-Host "[2/6] Installing FiraCode Nerd Font..." -ForegroundColor Yellow
+Write-Host "[2/7] Installing FiraCode Nerd Font..." -ForegroundColor Yellow
 Write-Host "  (This font is required for icons to display properly)" -ForegroundColor Gray
 
 # Installs for the current user (system-wide when run as Administrator).
@@ -44,17 +44,32 @@ if ($LASTEXITCODE -eq 0) {
 
 # 3. Install Terminal-Icons module (file/folder icons)
 Write-Host ""
-Write-Host "[3/6] Installing Terminal-Icons module..." -ForegroundColor Yellow
+Write-Host "[3/7] Installing Terminal-Icons module..." -ForegroundColor Yellow
 Install-Module -Name Terminal-Icons -Repository PSGallery -Force -Scope CurrentUser
 
 # 4. Install posh-git module (Git integration)
 Write-Host ""
-Write-Host "[4/6] Installing posh-git module..." -ForegroundColor Yellow
+Write-Host "[4/7] Installing posh-git module..." -ForegroundColor Yellow
 Install-Module -Name posh-git -Repository PSGallery -Force -Scope CurrentUser
 
-# 5. Download oh-my-posh themes
+# 5. Install zoxide (smarter cd: 'z') and eza (modern ls: 'l'), the same tools as the Linux setup
 Write-Host ""
-Write-Host "[5/6] Downloading oh-my-posh themes..." -ForegroundColor Yellow
+Write-Host "[5/7] Installing zoxide and eza..." -ForegroundColor Yellow
+winget install ajeetdsouza.zoxide -s winget --accept-package-agreements --accept-source-agreements
+winget install eza-community.eza -s winget --accept-package-agreements --accept-source-agreements
+
+# Refresh PATH so the new commands are available
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
+foreach ($tool in "zoxide", "eza") {
+    if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+        Write-Host "  $tool is not available after installing. Check the winget output above." -ForegroundColor Red
+    }
+}
+
+# 6. Download oh-my-posh themes
+Write-Host ""
+Write-Host "[6/7] Downloading oh-my-posh themes..." -ForegroundColor Yellow
 
 $themesPath = "$env:LOCALAPPDATA\Programs\oh-my-posh\themes"
 
@@ -84,9 +99,9 @@ foreach ($theme in $themes) {
     }
 }
 
-# 6. Write the PowerShell profile
+# 7. Write the PowerShell profile
 Write-Host ""
-Write-Host "[6/6] Writing PowerShell profile..." -ForegroundColor Yellow
+Write-Host "[7/7] Writing PowerShell profile..." -ForegroundColor Yellow
 
 # $PROFILE belongs to the shell running this script (Windows PowerShell 5.1 and PowerShell 7
 # have separate profiles and module folders), so run the script from the shell you use.
@@ -115,6 +130,16 @@ Import-Module Terminal-Icons -ErrorAction SilentlyContinue
 
 # Git tab completion (imported after Oh My Posh so it keeps the Oh My Posh prompt)
 Import-Module posh-git -ErrorAction SilentlyContinue
+
+# eza: 'l' lists files with icons, like in zsh (a function, since aliases can't take options)
+if (Get-Command eza -ErrorAction SilentlyContinue) {
+    function l { eza --long --all --header --icons --group-directories-first --no-permissions --no-user @args }
+}
+
+# zoxide: 'z' jumps to directories you've visited before (last, since it hooks into the prompt)
+if (Get-Command zoxide -ErrorAction SilentlyContinue) {
+    Invoke-Expression (& { (zoxide init powershell | Out-String) })
+}
 '@
 
 Set-Content -Path $PROFILE -Value $profileContent -Encoding UTF8
@@ -128,6 +153,7 @@ Write-Host "======================================================" -ForegroundC
 Write-Host ""
 Write-Host "Installed themes: $($themes -join ', ')" -ForegroundColor Gray
 Write-Host "Restart your terminal (or run '. `$PROFILE') to load the new prompt." -ForegroundColor Gray
+Write-Host "Tip: use 'z' instead of 'cd' and 'l' instead of 'ls'." -ForegroundColor Gray
 Write-Host ""
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host "CONFIGURE FONT IN WINDOWS TERMINAL" -ForegroundColor Cyan

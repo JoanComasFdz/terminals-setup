@@ -28,9 +28,11 @@ Installs:
 - **FiraCode Nerd Font**
 - **Terminal-Icons**: file and folder icons in listings
 - **posh-git**: git tab completion
+- **zoxide**: `z` jumps to directories you've visited before
+- **eza**: `l` lists files with icons
 
 Also:
-- Writes `$PROFILE` (Spaceship theme, Terminal-Icons, posh-git) and backs up the existing one first
+- Writes `$PROFILE` (Spaceship theme, Terminal-Icons, posh-git, `z`, `l`) and backs up the existing one first
 - Prints how to set the font in Windows Terminal
 
 Run (no Administrator needed):
