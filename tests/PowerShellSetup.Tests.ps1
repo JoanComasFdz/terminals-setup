@@ -21,6 +21,10 @@ Describe "setup-powershell-terminal.ps1" {
             Should -Not -BeNullOrEmpty
     }
 
+    It "installs <_>" -ForEach @("zoxide", "eza") {
+        Get-Command $_ -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
+    }
+
     It "installs the <_> module" -ForEach @("Terminal-Icons", "posh-git") {
         Get-Module -ListAvailable -Name $_ | Should -Not -BeNullOrEmpty
     }
@@ -34,7 +38,7 @@ Describe "setup-powershell-terminal.ps1" {
         $PROFILE | Should -FileContentMatch "oh-my-posh init"
     }
 
-    It "loads the profile without errors and sets the Oh My Posh prompt" {
+    It "loads the profile without errors, with the Oh My Posh prompt, z and l" {
         $shell = (Get-Process -Id $PID).Path
         $script = @'
 $ErrorActionPreference = "Stop"
@@ -42,6 +46,9 @@ $ErrorActionPreference = "Stop"
 if (-not (Get-Module Terminal-Icons)) { throw "Terminal-Icons not loaded" }
 if (-not (Get-Module posh-git)) { throw "posh-git not loaded" }
 if (-not (Get-Module oh-my-posh-core)) { throw "Oh My Posh prompt not initialized" }
+if (-not (Get-Command z -ErrorAction SilentlyContinue)) { throw "'z' (zoxide) not defined" }
+l | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "'l' (eza) failed with exit code $LASTEXITCODE" }
 "OK"
 '@
         # -EncodedCommand avoids Windows PowerShell 5.1 stripping the quotes in a -Command argument
