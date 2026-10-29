@@ -14,8 +14,10 @@ Describe "setup-powershell-terminal.ps1" {
         Get-Command oh-my-posh -ErrorAction SilentlyContinue | Should -Not -BeNullOrEmpty
     }
 
-    It "installs FiraCode Nerd Font for the current user" {
-        Get-ChildItem "$env:LOCALAPPDATA\Microsoft\Windows\Fonts" -Filter "FiraCodeNerdFont*" -ErrorAction SilentlyContinue |
+    It "installs FiraCode Nerd Font" {
+        # Per user normally, system-wide when the script runs as Administrator (as on CI runners)
+        $fontDirs = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts", "$env:WINDIR\Fonts"
+        Get-ChildItem $fontDirs -Filter "FiraCodeNerdFont*" -ErrorAction SilentlyContinue |
             Should -Not -BeNullOrEmpty
     }
 

@@ -27,8 +27,9 @@ Write-Host ""
 Write-Host "[2/6] Installing FiraCode Nerd Font..." -ForegroundColor Yellow
 Write-Host "  (This font is required for icons to display properly)" -ForegroundColor Gray
 
+# Installs for the current user (system-wide when run as Administrator).
 # oh-my-posh is a native command, so a failure sets $LASTEXITCODE instead of throwing
-oh-my-posh font install FiraCode --user
+oh-my-posh font install FiraCode
 if ($LASTEXITCODE -eq 0) {
     Write-Host "  Font installed successfully!" -ForegroundColor Gray
     Write-Host ""

@@ -30,6 +30,7 @@ check "zsh-autosuggestions is installed" test -d "$ZSH_CUSTOM/plugins/zsh-autosu
 check "zsh-syntax-highlighting is installed" test -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting"
 check "nvm is installed" test -s "$HOME/.nvm/nvm.sh"
 check ".zshrc was written" grep -q 'ZSH_THEME="spaceship"' "$HOME/.zshrc"
+check "global compinit is skipped" grep -q '^skip_global_compinit=1' "$HOME/.zshenv"
 LOGIN_SHELL=$(getent passwd "$(id -un)" | cut -d: -f7)
 check "zsh is the default shell" test "$LOGIN_SHELL" = "$(command -v zsh)"
 

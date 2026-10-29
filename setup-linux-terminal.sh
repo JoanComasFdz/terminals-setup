@@ -276,6 +276,13 @@ echo "Tip: use 'z' instead of 'cd' to change directories!"
 echo "Tip: use 'l' instead of 'ls' to explore directories!"
 EOF
 
+# Debian/Ubuntu's /etc/zsh/zshrc runs its own compinit before ~/.zshrc. Oh My Zsh already
+# runs compinit, so skip the global one: it doubles startup work and, when a completion
+# directory is group-writable, stops every new shell with an "insecure directories" prompt.
+if ! grep -qs '^skip_global_compinit=1' "$HOME/.zshenv"; then
+    echo 'skip_global_compinit=1' >> "$HOME/.zshenv"
+fi
+
 # -----------------------------------------------------------------------------
 # Set zsh as default shell
 # -----------------------------------------------------------------------------
