@@ -286,19 +286,34 @@ echo ""
 echo -e "${GREEN}Restart your terminal or run 'zsh' to start using the new setup!${NC}"
 echo ""
 # Fetch latest Nerd Fonts version for instructions
-NERD_FONTS_VERSION=$(curl -sfL https://api.github.com/repos/ryanoasis/nerd-fonts/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+NERD_FONTS_VERSION=$(curl -sfL https://api.github.com/repos/ryanoasis/nerd-fonts/releases/latest | grep '"tag_name"' | cut -d'"' -f4 || true)
 NERD_FONTS_VERSION="${NERD_FONTS_VERSION:-v3.4.0}"  # Fallback if API fails
 
 echo -e "${YELLOW}══════════════════════════════════════════════════════════════════════════════${NC}"
 echo -e "${YELLOW}  NEXT STEPS${NC}"
 echo -e "${YELLOW}══════════════════════════════════════════════════════════════════════════════${NC}"
 echo ""
-echo "1. Install FiraCode Nerd Font (run in PowerShell as Administrator):"
-echo ""
-echo -e "${BLUE}\$fonts = (New-Object -ComObject Shell.Application).Namespace(0x14); Invoke-WebRequest -Uri \"https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONTS_VERSION}/FiraCode.zip\" -OutFile \"\$env:TEMP\\FiraCode.zip\"; Expand-Archive -Path \"\$env:TEMP\\FiraCode.zip\" -DestinationPath \"\$env:TEMP\\FiraCode\" -Force; Get-ChildItem \"\$env:TEMP\\FiraCode\" -Filter \"*.ttf\" | ForEach-Object { \$fonts.CopyHere(\$_.FullName, 0x10) }; Remove-Item \"\$env:TEMP\\FiraCode.zip\" -Force; Remove-Item \"\$env:TEMP\\FiraCode\" -Recurse -Force${NC}"
-echo ""
-echo "2. Set font in Windows Terminal:"
-echo "   Settings > Profiles > Ubuntu > Appearance > Font face > FiraCode Nerd Font"
-echo ""
-echo "3. Restart Windows Terminal"
-echo ""
+
+# Under WSL the terminal (Windows Terminal) renders the text, so the font must be installed on Windows
+if grep -qi microsoft /proc/version 2>/dev/null; then
+    echo "1. Install FiraCode Nerd Font (run in PowerShell as Administrator):"
+    echo ""
+    echo -e "${BLUE}\$fonts = (New-Object -ComObject Shell.Application).Namespace(0x14); Invoke-WebRequest -Uri \"https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONTS_VERSION}/FiraCode.zip\" -OutFile \"\$env:TEMP\\FiraCode.zip\"; Expand-Archive -Path \"\$env:TEMP\\FiraCode.zip\" -DestinationPath \"\$env:TEMP\\FiraCode\" -Force; Get-ChildItem \"\$env:TEMP\\FiraCode\" -Filter \"*.ttf\" | ForEach-Object { \$fonts.CopyHere(\$_.FullName, 0x10) }; Remove-Item \"\$env:TEMP\\FiraCode.zip\" -Force; Remove-Item \"\$env:TEMP\\FiraCode\" -Recurse -Force${NC}"
+    echo ""
+    echo "2. Set font in Windows Terminal:"
+    echo "   Settings > Profiles > Ubuntu > Appearance > Font face > FiraCode Nerd Font"
+    echo ""
+    echo "3. Restart Windows Terminal"
+    echo ""
+    echo "   (Skip step 1 if you already ran setup-powershell-terminal.ps1, it installs the same font.)"
+    echo ""
+else
+    echo "1. Install FiraCode Nerd Font:"
+    echo "   https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONTS_VERSION}/FiraCode.zip"
+    echo "   Extract the .ttf files into ~/.local/share/fonts and run 'fc-cache -f'"
+    echo ""
+    echo "2. Set your terminal emulator's font to FiraCode Nerd Font"
+    echo ""
+    echo "3. Restart your terminal"
+    echo ""
+fi
